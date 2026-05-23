@@ -13,8 +13,9 @@ dns.setDefaultResultOrder('ipv4first');
 async function start() {
   await connectDb();
   await ensureDefaultSettings();
-  app.listen(env.port, () => {
-    console.log(`RLP Backend running on http://localhost:${env.port}`);
+  const host = process.env.HOST || '0.0.0.0';
+  app.listen(env.port, host, () => {
+    console.log(`RLP Backend running on http://${host}:${env.port}`);
   });
 }
 

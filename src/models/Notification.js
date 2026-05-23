@@ -9,9 +9,8 @@ const notificationSchema = new mongoose.Schema({
   priority: { type: Boolean, default: false },
 }, baseOptions);
 
-notificationSchema.pre('save', function setMessage(next) {
+notificationSchema.pre('save', function setMessage() {
   if (!this.message) this.message = this.body;
-  next();
 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

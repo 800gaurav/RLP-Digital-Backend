@@ -7,7 +7,16 @@ const requireAuth = asyncHandler(async (req, res, next) => {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ success: false, message: 'Authentication required' });
 
-  const payload = verifyAccessToken(token);
+  let payload;
+  try {
+    payload = verifyAccessToken(token);
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, code: 'TOKEN_EXPIRED', message: 'Session expired. Refresh token required.' });
+    }
+    return res.status(401).json({ success: false, code: 'INVALID_TOKEN', message: 'Invalid authentication token' });
+  }
+
   const user = await User.findById(payload.userId);
   if (!user) return res.status(401).json({ success: false, message: 'User not found' });
 

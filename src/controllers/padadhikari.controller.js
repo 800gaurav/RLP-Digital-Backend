@@ -3,16 +3,18 @@ const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 
 const listPadadhikari = asyncHandler(async (req, res) => {
-  const { q, rank, district, state } = req.query;
+  const { q, rank, district, block, state } = req.query;
   const filter = {};
   if (rank) filter.rank = rank;
   if (district) filter.district = new RegExp(district, 'i');
+  if (block) filter.block = new RegExp(block, 'i');
   if (state) filter.state = new RegExp(state, 'i');
   if (q) {
     filter.$or = [
       { fullName: new RegExp(q, 'i') },
       { designation: new RegExp(q, 'i') },
       { district: new RegExp(q, 'i') },
+      { block: new RegExp(q, 'i') },
     ];
   }
   const officials = await Padadhikari.find(filter).sort({ rank: 1, fullName: 1 });
@@ -26,6 +28,12 @@ const getPadadhikari = asyncHandler(async (req, res) => {
 });
 
 const createPadadhikari = asyncHandler(async (req, res) => {
+  if (!req.body.fullName?.trim()) {
+    return res.status(400).json({ success: false, message: 'Padadhikari name is required' });
+  }
+  if (!req.body.designation?.trim()) {
+    return res.status(400).json({ success: false, message: 'Padadhikari designation is required' });
+  }
   const official = await Padadhikari.create({ ...req.body, photoUrl: fileUrl(req, req.file) || req.body.photoUrl });
   res.status(201).json({ success: true, data: official.toJSON() });
 });

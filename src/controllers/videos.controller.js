@@ -18,6 +18,9 @@ const createTrainingVideo = asyncHandler(async (req, res) => {
   const videoFile = req.files?.video?.[0];
   const thumbnailUrl = fileUrl(req, thumbnailFile) || req.body.thumbnailUrl;
   const videoUrl = fileUrl(req, videoFile) || req.body.videoUrl;
+  if (!req.body.title?.trim()) {
+    return res.status(400).json({ success: false, message: 'Training title is required' });
+  }
   if (!videoUrl) return res.status(400).json({ success: false, message: 'Video URL or upload is required' });
   const video = await TrainingVideo.create({
     title: req.body.title,
@@ -30,4 +33,26 @@ const createTrainingVideo = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: video.toJSON() });
 });
 
-module.exports = { getTrainingVideos, getTrainingVideo, createTrainingVideo };
+const updateTrainingVideo = asyncHandler(async (req, res) => {
+  const thumbnailFile = req.files?.thumbnail?.[0] || req.file;
+  const videoFile = req.files?.video?.[0];
+  const update = {};
+  ['title', 'description', 'duration', 'language', 'thumbnailUrl', 'videoUrl'].forEach((key) => {
+    if (req.body[key] !== undefined) update[key] = req.body[key];
+  });
+  const thumbnailUrl = fileUrl(req, thumbnailFile);
+  const videoUrl = fileUrl(req, videoFile);
+  if (thumbnailUrl) update.thumbnailUrl = thumbnailUrl;
+  if (videoUrl) update.videoUrl = videoUrl;
+  const video = await TrainingVideo.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+  if (!video) return res.status(404).json({ success: false, message: 'Video not found' });
+  res.json({ success: true, data: video.toJSON() });
+});
+
+const deleteTrainingVideo = asyncHandler(async (req, res) => {
+  const video = await TrainingVideo.findByIdAndDelete(req.params.id);
+  if (!video) return res.status(404).json({ success: false, message: 'Video not found' });
+  res.json({ success: true, message: 'Video deleted' });
+});
+
+module.exports = { getTrainingVideos, getTrainingVideo, createTrainingVideo, updateTrainingVideo, deleteTrainingVideo };

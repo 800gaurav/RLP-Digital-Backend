@@ -15,6 +15,7 @@ const reelsRoutes = require('./routes/reels.routes');
 const trainingRoutes = require('./routes/videos.routes');
 const stampPadRoutes = require('./routes/stamppad.routes');
 const idCardRoutes = require('./routes/idcard.routes');
+const homeRoutes = require('./routes/home.routes');
 const { notFound, errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
@@ -32,6 +33,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true,
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/health', (_req, res) => {
@@ -49,6 +51,7 @@ app.use('/api/training-videos', trainingRoutes);
 app.use('/api/stamp-pad', stampPadRoutes);
 app.use('/api/id-card', idCardRoutes);
 app.use('/api/verify', idCardRoutes);
+app.use('/api/home', homeRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

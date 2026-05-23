@@ -33,6 +33,12 @@ const updateTemplate = asyncHandler(async (req, res) => {
   res.json({ success: true, data: template.toJSON() });
 });
 
+const deleteTemplate = asyncHandler(async (req, res) => {
+  const template = await PosterTemplate.findByIdAndUpdate(req.params.id, { active: false }, { new: true });
+  if (!template) return res.status(404).json({ success: false, message: 'Template not found' });
+  res.json({ success: true, message: 'Template disabled' });
+});
+
 const getSubscriptionStatus = asyncHandler(async (req, res) => {
   const settings = await getSettings();
   res.json({
@@ -52,4 +58,4 @@ const updateSubscriptionPrice = asyncHandler(async (req, res) => {
   res.json({ success: true, data: settings.toJSON() });
 });
 
-module.exports = { getTemplates, createTemplate, updateTemplate, getSubscriptionStatus, updateSubscriptionPrice };
+module.exports = { getTemplates, createTemplate, updateTemplate, deleteTemplate, getSubscriptionStatus, updateSubscriptionPrice };

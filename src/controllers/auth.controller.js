@@ -61,7 +61,14 @@ const refresh = asyncHandler(async (req, res) => {
   const refreshToken = req.body.refreshToken;
   if (!refreshToken) return res.status(400).json({ success: false, message: 'Refresh token required' });
 
-  const payload = verifyRefreshToken(refreshToken);
+  let payload;
+  try {
+    payload = verifyRefreshToken(refreshToken);
+  } catch (error) {
+    const message = error.name === 'TokenExpiredError' ? 'Refresh token expired. Please login again.' : 'Invalid refresh token';
+    return res.status(401).json({ success: false, code: 'REFRESH_TOKEN_INVALID', message });
+  }
+
   const stored = await RefreshToken.findOne({ token: refreshToken, user: payload.userId });
   if (!stored || stored.expiresAt < new Date()) {
     return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
@@ -71,7 +78,7 @@ const refresh = asyncHandler(async (req, res) => {
   if (!user) return res.status(401).json({ success: false, message: 'User not found' });
 
   const accessToken = signAccessToken(user);
-  res.json({ success: true, accessToken, data: { accessToken } });
+  res.json({ success: true, accessToken, data: { accessToken, tokens: { accessToken, refreshToken } } });
 });
 
 const logout = asyncHandler(async (req, res) => {
