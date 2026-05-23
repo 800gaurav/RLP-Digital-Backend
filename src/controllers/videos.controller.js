@@ -2,9 +2,35 @@ const TrainingVideo = require('../models/TrainingVideo');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 
-const getTrainingVideos = asyncHandler(async (_req, res) => {
-  const videos = await TrainingVideo.find().sort({ createdAt: -1 }).limit(100);
-  res.json({ success: true, data: videos.map((item) => item.toJSON()) });
+const getTrainingVideos = asyncHandler(async (req, res) => {
+  const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
+
+  if (!hasPaginationQuery) {
+    const videos = await TrainingVideo.find().sort({ createdAt: -1 }).limit(100);
+    return res.json({ success: true, data: videos.map((item) => item.toJSON()) });
+  }
+
+  const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 10, 1), 30);
+  const skip = (page - 1) * limit;
+  const [videos, total] = await Promise.all([
+    TrainingVideo.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+    TrainingVideo.countDocuments(),
+  ]);
+  const totalPages = Math.ceil(total / limit);
+
+  return res.json({
+    success: true,
+    data: videos.map((item) => item.toJSON()),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      nextPage: page < totalPages ? page + 1 : null,
+    },
+  });
 });
 
 const getTrainingVideo = asyncHandler(async (req, res) => {

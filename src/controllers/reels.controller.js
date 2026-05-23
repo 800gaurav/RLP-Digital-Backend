@@ -2,9 +2,35 @@ const Reel = require('../models/Reel');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 
-const getReels = asyncHandler(async (_req, res) => {
-  const reels = await Reel.find().sort({ createdAt: -1 }).limit(100);
-  res.json({ success: true, data: reels.map((item) => item.toJSON()) });
+const getReels = asyncHandler(async (req, res) => {
+  const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
+
+  if (!hasPaginationQuery) {
+    const reels = await Reel.find().sort({ createdAt: -1 }).limit(100);
+    return res.json({ success: true, data: reels.map((item) => item.toJSON()) });
+  }
+
+  const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 10, 1), 30);
+  const skip = (page - 1) * limit;
+  const [reels, total] = await Promise.all([
+    Reel.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Reel.countDocuments(),
+  ]);
+  const totalPages = Math.ceil(total / limit);
+
+  return res.json({
+    success: true,
+    data: reels.map((item) => item.toJSON()),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      nextPage: page < totalPages ? page + 1 : null,
+    },
+  });
 });
 
 const createReel = asyncHandler(async (req, res) => {
