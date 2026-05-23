@@ -1,0 +1,33 @@
+const TrainingVideo = require('../models/TrainingVideo');
+const asyncHandler = require('../utils/asyncHandler');
+const { fileUrl } = require('../middleware/upload.middleware');
+
+const getTrainingVideos = asyncHandler(async (_req, res) => {
+  const videos = await TrainingVideo.find().sort({ createdAt: -1 }).limit(100);
+  res.json({ success: true, data: videos.map((item) => item.toJSON()) });
+});
+
+const getTrainingVideo = asyncHandler(async (req, res) => {
+  const video = await TrainingVideo.findById(req.params.id);
+  if (!video) return res.status(404).json({ success: false, message: 'Video not found' });
+  res.json({ success: true, data: video.toJSON() });
+});
+
+const createTrainingVideo = asyncHandler(async (req, res) => {
+  const thumbnailFile = req.files?.thumbnail?.[0] || req.file;
+  const videoFile = req.files?.video?.[0];
+  const thumbnailUrl = fileUrl(req, thumbnailFile) || req.body.thumbnailUrl;
+  const videoUrl = fileUrl(req, videoFile) || req.body.videoUrl;
+  if (!videoUrl) return res.status(400).json({ success: false, message: 'Video URL or upload is required' });
+  const video = await TrainingVideo.create({
+    title: req.body.title,
+    description: req.body.description,
+    videoUrl,
+    duration: req.body.duration,
+    language: req.body.language || 'Hindi',
+    thumbnailUrl,
+  });
+  res.status(201).json({ success: true, data: video.toJSON() });
+});
+
+module.exports = { getTrainingVideos, getTrainingVideo, createTrainingVideo };
