@@ -10,7 +10,7 @@ function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-function makeUpload(folder, allowedTypes = /jpeg|jpg|png|webp|mp4|mov|pdf/, maxFileSizeMb = 50) {
+function makeUpload(folder, allowedTypes = /jpeg|jpg|png|webp|mp4|mov|mkv|avi|pdf/, maxFileSizeMb = 50) {
   const destination = path.join(uploadRoot, folder);
   ensureDir(destination);
 
@@ -28,7 +28,12 @@ function makeUpload(folder, allowedTypes = /jpeg|jpg|png|webp|mp4|mov|pdf/, maxF
     limits: { fileSize: maxFileSizeMb * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
-      const mime = file.mimetype?.split('/')?.[1]?.replace('quicktime', 'mov')?.replace('jpeg', 'jpg') || '';
+      const mime = file.mimetype
+        ?.split('/')?.[1]
+        ?.replace('quicktime', 'mov')
+        ?.replace('x-matroska', 'mkv')
+        ?.replace('x-msvideo', 'avi')
+        ?.replace('jpeg', 'jpg') || '';
       if (allowedTypes.test(ext) || allowedTypes.test(mime)) return cb(null, true);
       cb(new Error(`Unsupported file type: ${file.mimetype || file.originalname}`));
     },
@@ -44,8 +49,9 @@ function fileUrl(req, file) {
 
 module.exports = {
   uploadProfile: makeUpload('profiles', /jpeg|jpg|png|webp/, 25),
-  uploadMedia: makeUpload('media', /jpeg|jpg|png|webp|mp4|mov/, 250),
+  uploadMedia: makeUpload('media', /jpeg|jpg|png|webp|mp4|mov|mkv|avi/, 250),
   uploadTemplate: makeUpload('poster-templates', /jpeg|jpg|png|webp/, 25),
-  uploadTraining: makeUpload('training', /jpeg|jpg|png|webp|mp4|mov/, 300),
+  uploadTraining: makeUpload('training', /jpeg|jpg|png|webp|mp4|mov|mkv|avi/, 300),
   fileUrl,
+  uploadRoot,
 };

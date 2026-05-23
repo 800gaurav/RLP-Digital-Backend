@@ -1,6 +1,7 @@
 const Padadhikari = require('../models/Padadhikari');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
+const { serializePadadhikari } = require('../utils/media-response');
 
 const listPadadhikari = asyncHandler(async (req, res) => {
   const { q, rank, district, block, state } = req.query;
@@ -18,13 +19,13 @@ const listPadadhikari = asyncHandler(async (req, res) => {
     ];
   }
   const officials = await Padadhikari.find(filter).sort({ rank: 1, fullName: 1 });
-  res.json({ success: true, data: officials.map((item) => item.toJSON()) });
+  res.json({ success: true, data: officials.map(serializePadadhikari) });
 });
 
 const getPadadhikari = asyncHandler(async (req, res) => {
   const official = await Padadhikari.findById(req.params.id);
   if (!official) return res.status(404).json({ success: false, message: 'Official not found' });
-  res.json({ success: true, data: official.toJSON() });
+  res.json({ success: true, data: serializePadadhikari(official) });
 });
 
 const createPadadhikari = asyncHandler(async (req, res) => {
@@ -34,17 +35,26 @@ const createPadadhikari = asyncHandler(async (req, res) => {
   if (!req.body.designation?.trim()) {
     return res.status(400).json({ success: false, message: 'Padadhikari designation is required' });
   }
-  const official = await Padadhikari.create({ ...req.body, photoUrl: fileUrl(req, req.file) || req.body.photoUrl });
-  res.status(201).json({ success: true, data: official.toJSON() });
+  const photoAsset = req.processedMedia?.photo;
+  const official = await Padadhikari.create({
+    ...req.body,
+    photoUrl: photoAsset?.imageUrl || fileUrl(req, req.file) || req.body.photoUrl,
+    thumbnailUrl: photoAsset?.thumbnailUrl || '',
+    size: photoAsset?.size || 0,
+  });
+  res.status(201).json({ success: true, data: serializePadadhikari(official) });
 });
 
 const updatePadadhikari = asyncHandler(async (req, res) => {
+  const photoAsset = req.processedMedia?.photo;
   const update = { ...req.body };
-  const uploaded = fileUrl(req, req.file);
+  const uploaded = photoAsset?.imageUrl || fileUrl(req, req.file);
   if (uploaded) update.photoUrl = uploaded;
+  if (photoAsset?.thumbnailUrl) update.thumbnailUrl = photoAsset.thumbnailUrl;
+  if (photoAsset?.size) update.size = photoAsset.size;
   const official = await Padadhikari.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
   if (!official) return res.status(404).json({ success: false, message: 'Official not found' });
-  res.json({ success: true, data: official.toJSON() });
+  res.json({ success: true, data: serializePadadhikari(official) });
 });
 
 const deletePadadhikari = asyncHandler(async (req, res) => {

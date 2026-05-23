@@ -2,9 +2,10 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
+const { serializeUser } = require('../utils/media-response');
 
 const getMe = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: req.user.toJSON() });
+  res.json({ success: true, data: serializeUser(req.user) });
 });
 
 const updateMe = asyncHandler(async (req, res) => {
@@ -16,13 +17,18 @@ const updateMe = asyncHandler(async (req, res) => {
   if (req.body.password) update.password = await bcrypt.hash(req.body.password, 12);
 
   const user = await User.findByIdAndUpdate(req.userId, update, { new: true, runValidators: true });
-  res.json({ success: true, data: user.toJSON() });
+  res.json({ success: true, data: serializeUser(user) });
 });
 
 const updatePhoto = asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No photo uploaded' });
-  const user = await User.findByIdAndUpdate(req.userId, { profilePhoto: fileUrl(req, req.file) }, { new: true });
-  res.json({ success: true, data: user.toJSON() });
+  const photoAsset = req.processedMedia?.photo;
+  const user = await User.findByIdAndUpdate(req.userId, {
+    profilePhoto: photoAsset?.imageUrl || fileUrl(req, req.file),
+    profileThumbnailUrl: photoAsset?.thumbnailUrl || '',
+    profilePhotoSize: photoAsset?.size || 0,
+  }, { new: true });
+  res.json({ success: true, data: serializeUser(user) });
 });
 
 const saveFcmToken = asyncHandler(async (req, res) => {
@@ -48,7 +54,7 @@ const getUsers = asyncHandler(async (req, res) => {
   }
 
   const users = await User.find(filter).sort({ createdAt: -1 }).limit(200);
-  res.json({ success: true, data: users.map((user) => user.toJSON()) });
+  res.json({ success: true, data: users.map(serializeUser) });
 });
 
 const updateUserPermissions = asyncHandler(async (req, res) => {
@@ -59,7 +65,7 @@ const updateUserPermissions = asyncHandler(async (req, res) => {
 
   const user = await User.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-  res.json({ success: true, data: user.toJSON() });
+  res.json({ success: true, data: serializeUser(user) });
 });
 
 module.exports = { getMe, updateMe, updatePhoto, saveFcmToken, getUsers, updateUserPermissions };

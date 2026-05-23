@@ -51,6 +51,8 @@ const contentSummary = asyncHandler(async (_req, res) => {
       notifications,
       pendingUploads: 0,
       subscriptionPrice: settings.subscriptionPrice,
+      monthlyTemplateDownloadLimit: settings.monthlyTemplateDownloadLimit,
+      posterCategories: settings.posterCategories,
     },
   });
 });

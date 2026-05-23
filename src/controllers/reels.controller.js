@@ -1,13 +1,14 @@
 const Reel = require('../models/Reel');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
+const { serializeReel } = require('../utils/media-response');
 
 const getReels = asyncHandler(async (req, res) => {
   const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
 
   if (!hasPaginationQuery) {
     const reels = await Reel.find().sort({ createdAt: -1 }).limit(100);
-    return res.json({ success: true, data: reels.map((item) => item.toJSON()) });
+    return res.json({ success: true, data: reels.map(serializeReel) });
   }
 
   const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
@@ -21,7 +22,7 @@ const getReels = asyncHandler(async (req, res) => {
 
   return res.json({
     success: true,
-    data: reels.map((item) => item.toJSON()),
+    data: reels.map(serializeReel),
     pagination: {
       page,
       limit,
@@ -34,29 +35,37 @@ const getReels = asyncHandler(async (req, res) => {
 });
 
 const createReel = asyncHandler(async (req, res) => {
-  const mediaUrl = fileUrl(req, req.file) || req.body.mediaUrl;
+  const mediaAsset = req.processedMedia?.media;
+  const mediaUrl = mediaAsset?.videoUrl || mediaAsset?.imageUrl || fileUrl(req, req.file) || req.body.mediaUrl;
   if (!mediaUrl) return res.status(400).json({ success: false, message: 'Media file is required' });
   const caption = typeof req.body.caption === 'string' ? req.body.caption.trim() : '';
   const reel = await Reel.create({
     mediaUrl,
-    mediaType: req.body.mediaType || (req.file?.mimetype?.startsWith('video') ? 'video' : 'image'),
+    mediaType: mediaAsset?.kind || req.body.mediaType || (req.file?.mimetype?.startsWith('video') ? 'video' : 'image'),
+    thumbnailUrl: mediaAsset?.thumbnailUrl || '',
+    duration: mediaAsset?.duration || '',
+    size: mediaAsset?.size || 0,
     caption,
   });
-  res.status(201).json({ success: true, data: reel.toJSON() });
+  res.status(201).json({ success: true, data: serializeReel(reel) });
 });
 
 const updateReel = asyncHandler(async (req, res) => {
+  const mediaAsset = req.processedMedia?.media;
   const update = {};
   if (req.body.caption !== undefined) update.caption = typeof req.body.caption === 'string' ? req.body.caption.trim() : '';
   if (req.body.mediaType !== undefined) update.mediaType = req.body.mediaType;
-  const uploaded = fileUrl(req, req.file);
+  const uploaded = mediaAsset?.videoUrl || mediaAsset?.imageUrl || fileUrl(req, req.file);
   if (uploaded) {
     update.mediaUrl = uploaded;
-    update.mediaType = req.body.mediaType || (req.file?.mimetype?.startsWith('video') ? 'video' : 'image');
+    update.mediaType = mediaAsset?.kind || req.body.mediaType || (req.file?.mimetype?.startsWith('video') ? 'video' : 'image');
+    update.thumbnailUrl = mediaAsset?.thumbnailUrl || '';
+    update.duration = mediaAsset?.duration || '';
+    update.size = mediaAsset?.size || 0;
   }
   const reel = await Reel.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
   if (!reel) return res.status(404).json({ success: false, message: 'Reel not found' });
-  res.json({ success: true, data: reel.toJSON() });
+  res.json({ success: true, data: serializeReel(reel) });
 });
 
 const deleteReel = asyncHandler(async (req, res) => {

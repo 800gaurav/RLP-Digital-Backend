@@ -3,6 +3,12 @@ const Padadhikari = require('../models/Padadhikari');
 const Reel = require('../models/Reel');
 const TrainingVideo = require('../models/TrainingVideo');
 const asyncHandler = require('../utils/asyncHandler');
+const {
+  serializeNotification,
+  serializePadadhikari,
+  serializeReel,
+  serializeTrainingVideo,
+} = require('../utils/media-response');
 
 const getHomeFeed = asyncHandler(async (_req, res) => {
   const [notifications, officials, reels, trainings] = await Promise.all([
@@ -15,10 +21,10 @@ const getHomeFeed = asyncHandler(async (_req, res) => {
   res.json({
     success: true,
     data: {
-      notifications: notifications.map((item) => item.toJSON()),
-      officials: officials.map((item) => item.toJSON()),
-      reels: reels.map((item) => item.toJSON()),
-      trainings: trainings.map((item) => item.toJSON()),
+      notifications: notifications.map(serializeNotification),
+      officials: officials.map(serializePadadhikari),
+      reels: reels.map(serializeReel),
+      trainings: trainings.map(serializeTrainingVideo),
     },
   });
 });

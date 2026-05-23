@@ -20,7 +20,7 @@ function errorHandler(err, _req, res, _next) {
     message = 'Duplicate record already exists';
   } else if (err.name === 'MulterError') {
     status = 400;
-  } else if (err.message === 'Unsupported file type') {
+  } else if (typeof err.message === 'string' && err.message.startsWith('Unsupported file type')) {
     status = 400;
   }
 
