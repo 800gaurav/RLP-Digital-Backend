@@ -34,9 +34,11 @@ function withMediaShape(data, overrides = {}) {
   const thumbnailUrl = sanitizeUploadUrl(overrides.thumbnailUrl ?? data.thumbnailUrl ?? '');
   const videoUrl = sanitizeUploadUrl(overrides.videoUrl ?? data.videoUrl ?? '');
   const mediaUrl = sanitizeUploadUrl(overrides.mediaUrl ?? data.mediaUrl ?? '') || videoUrl || imageUrl || thumbnailUrl;
+  const photoUrl = sanitizeUploadUrl(overrides.photoUrl ?? data.photoUrl ?? '') || imageUrl || thumbnailUrl;
 
   return {
     ...data,
+    photoUrl,
     mediaUrl,
     imageUrl,
     thumbnailUrl,
@@ -93,6 +95,8 @@ function serializePadadhikari(item) {
   return withMediaShape(data, {
     imageUrl: data.imageUrl || data.photoUrl || '',
     thumbnailUrl: data.thumbnailUrl || data.photoUrl || '',
+    mediaUrl: data.imageUrl || data.photoUrl || data.thumbnailUrl || '',
+    photoUrl: data.photoUrl || data.imageUrl || '',
     videoUrl: '',
   });
 }
