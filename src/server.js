@@ -15,7 +15,8 @@ async function start() {
   await ensureDefaultSettings();
   const host = process.env.HOST || '0.0.0.0';
   app.listen(env.port, host, () => {
-    console.log(`RLP Backend running on http://${host}:${env.port}`);
+    const publicUrl = env.publicBaseUrl || `http://${host}:${env.port}`;
+    console.log(`RLP Backend running on ${publicUrl}`);
   });
 }
 

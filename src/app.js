@@ -20,6 +20,7 @@ const { notFound, errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
 const allowedOrigins = (process.env.FRONTEND_URL || '*').split(',').map((item) => item.trim());
+app.set('trust proxy', process.env.TRUST_PROXY || 1);
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
