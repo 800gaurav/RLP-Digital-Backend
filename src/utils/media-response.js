@@ -1,14 +1,31 @@
+const fs = require('fs');
+const path = require('path');
+
+const uploadRoot = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
+  : path.join(__dirname, '..', '..', 'uploads');
+
 function toSizeValue(value) {
   const size = Number(value);
   return Number.isFinite(size) && size > 0 ? size : 0;
 }
 
+function sanitizeUploadUrl(value) {
+  if (!value || typeof value !== 'string') return '';
+  const match = value.match(/\/uploads\/(.+)$/i);
+  if (!match) return value;
+
+  const relativePath = match[1].replace(/\//g, path.sep);
+  const absolutePath = path.join(uploadRoot, relativePath);
+  return fs.existsSync(absolutePath) ? value : '';
+}
+
 function withMediaShape(data, overrides = {}) {
   return {
     ...data,
-    imageUrl: overrides.imageUrl ?? data.imageUrl ?? '',
-    thumbnailUrl: overrides.thumbnailUrl ?? data.thumbnailUrl ?? '',
-    videoUrl: overrides.videoUrl ?? data.videoUrl ?? '',
+    imageUrl: sanitizeUploadUrl(overrides.imageUrl ?? data.imageUrl ?? ''),
+    thumbnailUrl: sanitizeUploadUrl(overrides.thumbnailUrl ?? data.thumbnailUrl ?? ''),
+    videoUrl: sanitizeUploadUrl(overrides.videoUrl ?? data.videoUrl ?? ''),
     duration: overrides.duration ?? data.duration ?? '',
     size: overrides.size ?? toSizeValue(data.size),
   };
