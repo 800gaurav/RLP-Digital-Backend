@@ -72,6 +72,7 @@ function serializePosterTemplate(item) {
     imageUrl: data.imageUrl || '',
     thumbnailUrl: data.thumbnailUrl || data.imageUrl || '',
     videoUrl: '',
+    mediaUrl: data.imageUrl || data.thumbnailUrl || '',
   });
 }
 
@@ -120,6 +121,10 @@ module.exports = {
   hasRenderableTrainingVideo: (item) => {
     const serialized = serializeTrainingVideo(item);
     return Boolean(serialized.videoUrl);
+  },
+  hasRenderablePosterTemplate: (item) => {
+    const serialized = serializePosterTemplate(item);
+    return Boolean(serialized.imageUrl || serialized.thumbnailUrl || serialized.mediaUrl);
   },
   serializeNotification,
   serializePadadhikari,

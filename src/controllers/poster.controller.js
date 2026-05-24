@@ -2,7 +2,7 @@ const PosterTemplate = require('../models/PosterTemplate');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { getSettings } = require('../utils/settings');
-const { serializePosterTemplate } = require('../utils/media-response');
+const { hasRenderablePosterTemplate, serializePosterTemplate } = require('../utils/media-response');
 const { consumePosterDownload, getPosterUsage } = require('../utils/poster-access');
 
 function normalizeCategories(input) {
@@ -23,7 +23,7 @@ const getTemplates = asyncHandler(async (req, res) => {
     filter.category = req.query.category;
   }
   const templates = await PosterTemplate.find(filter).sort({ createdAt: -1 });
-  res.json({ success: true, data: templates.map(serializePosterTemplate) });
+  res.json({ success: true, data: templates.filter(hasRenderablePosterTemplate).map(serializePosterTemplate) });
 });
 
 const createTemplate = asyncHandler(async (req, res) => {
