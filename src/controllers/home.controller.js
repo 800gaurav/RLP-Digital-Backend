@@ -6,6 +6,8 @@ const asyncHandler = require('../utils/asyncHandler');
 const {
   serializeNotification,
   serializePadadhikari,
+  hasRenderableReel,
+  hasRenderableTrainingVideo,
   serializeReel,
   serializeTrainingVideo,
 } = require('../utils/media-response');
@@ -23,8 +25,8 @@ const getHomeFeed = asyncHandler(async (_req, res) => {
     data: {
       notifications: notifications.map(serializeNotification),
       officials: officials.map(serializePadadhikari),
-      reels: reels.map(serializeReel),
-      trainings: trainings.map(serializeTrainingVideo),
+      reels: reels.filter(hasRenderableReel).map(serializeReel),
+      trainings: trainings.filter(hasRenderableTrainingVideo).map(serializeTrainingVideo),
     },
   });
 });

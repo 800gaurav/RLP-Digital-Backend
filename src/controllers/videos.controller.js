@@ -1,14 +1,14 @@
 const TrainingVideo = require('../models/TrainingVideo');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
-const { serializeTrainingVideo } = require('../utils/media-response');
+const { hasRenderableTrainingVideo, serializeTrainingVideo } = require('../utils/media-response');
 
 const getTrainingVideos = asyncHandler(async (req, res) => {
   const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
 
   if (!hasPaginationQuery) {
     const videos = await TrainingVideo.find().sort({ createdAt: -1 }).limit(100);
-    return res.json({ success: true, data: videos.map(serializeTrainingVideo) });
+    return res.json({ success: true, data: videos.filter(hasRenderableTrainingVideo).map(serializeTrainingVideo) });
   }
 
   const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
@@ -22,7 +22,7 @@ const getTrainingVideos = asyncHandler(async (req, res) => {
 
   return res.json({
     success: true,
-    data: videos.map(serializeTrainingVideo),
+    data: videos.filter(hasRenderableTrainingVideo).map(serializeTrainingVideo),
     pagination: {
       page,
       limit,

@@ -43,6 +43,15 @@ function collectFiles(req) {
   return Object.values(req.files).flat();
 }
 
+async function getFileSize(filePath) {
+  try {
+    const stats = await fs.stat(filePath);
+    return stats.isFile() ? stats.size : 0;
+  } catch (_error) {
+    return 0;
+  }
+}
+
 function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return '';
   const totalSeconds = Math.round(seconds);
@@ -156,36 +165,57 @@ async function optimizeVideo(file, req, options) {
   const mainPath = buildOutputPath(file.path, '', '.mp4');
   const tempThumbPath = buildOutputPath(file.path, '-thumb-temp', '.jpg');
   const thumbPath = buildOutputPath(file.path, '-thumb', '.webp');
+  let selectedVideoPath = mainPath;
+  let selectedMimeType = 'video/mp4';
 
   await transcodeVideo(file.path, mainPath, options);
-  const metadata = await ffprobe(mainPath);
+  const optimizedSize = await getFileSize(mainPath);
+  if (!optimizedSize) {
+    await safelyDelete(mainPath);
+    selectedVideoPath = file.path;
+    selectedMimeType = file.mimetype || 'video/mp4';
+  }
+
+  const metadata = await ffprobe(selectedVideoPath);
   const durationSeconds = Number(metadata?.format?.duration) || 0;
 
-  await captureVideoThumbnail(mainPath, tempThumbPath, durationSeconds > 3 ? '00:00:02' : '00:00:01');
-  await sharp(tempThumbPath)
-    .resize({
-      width: options.thumbnailWidth,
-      height: options.thumbnailHeight,
-      withoutEnlargement: true,
-      fit: 'cover',
-      position: 'centre',
-    })
-    .webp({ quality: options.thumbnailQuality, effort: 4 })
-    .toFile(thumbPath);
+  let thumbnailUrl = '';
+  try {
+    await captureVideoThumbnail(selectedVideoPath, tempThumbPath, durationSeconds > 3 ? '00:00:02' : '00:00:01');
+    await sharp(tempThumbPath)
+      .resize({
+        width: options.thumbnailWidth,
+        height: options.thumbnailHeight,
+        withoutEnlargement: true,
+        fit: 'cover',
+        position: 'centre',
+      })
+      .webp({ quality: options.thumbnailQuality, effort: 4 })
+      .toFile(thumbPath);
+    thumbnailUrl = buildFileUrl(req, thumbPath, options.uploadRoot);
+  } catch (_error) {
+    thumbnailUrl = '';
+  }
 
-  const mainStats = await fs.stat(mainPath);
-  await safelyDelete(file.path);
+  const mainSize = await getFileSize(selectedVideoPath);
+  if (!mainSize) {
+    throw new Error('Processed video file is empty after upload optimization');
+  }
+
+  if (selectedVideoPath !== file.path) {
+    await safelyDelete(file.path);
+  }
   await safelyDelete(tempThumbPath);
 
   return {
     kind: 'video',
     imageUrl: '',
-    thumbnailUrl: buildFileUrl(req, thumbPath, options.uploadRoot),
-    videoUrl: buildFileUrl(req, mainPath, options.uploadRoot),
+    thumbnailUrl,
+    videoUrl: buildFileUrl(req, selectedVideoPath, options.uploadRoot),
     duration: formatDuration(durationSeconds),
-    size: mainStats.size,
-    mimeType: 'video/mp4',
-    storagePaths: [mainPath, thumbPath],
+    size: mainSize,
+    mimeType: selectedMimeType,
+    storagePaths: thumbnailUrl ? [selectedVideoPath, thumbPath] : [selectedVideoPath],
   };
 }
 

@@ -1,14 +1,14 @@
 const Reel = require('../models/Reel');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
-const { serializeReel } = require('../utils/media-response');
+const { hasRenderableReel, serializeReel } = require('../utils/media-response');
 
 const getReels = asyncHandler(async (req, res) => {
   const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
 
   if (!hasPaginationQuery) {
     const reels = await Reel.find().sort({ createdAt: -1 }).limit(100);
-    return res.json({ success: true, data: reels.map(serializeReel) });
+    return res.json({ success: true, data: reels.filter(hasRenderableReel).map(serializeReel) });
   }
 
   const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
@@ -22,7 +22,7 @@ const getReels = asyncHandler(async (req, res) => {
 
   return res.json({
     success: true,
-    data: reels.map(serializeReel),
+    data: reels.filter(hasRenderableReel).map(serializeReel),
     pagination: {
       page,
       limit,
