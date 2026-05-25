@@ -2,6 +2,7 @@ const Reel = require('../models/Reel');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { hasRenderableReel, serializeReel } = require('../utils/media-response');
+const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
 
 const getReels = asyncHandler(async (req, res) => {
   const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
@@ -51,6 +52,8 @@ const createReel = asyncHandler(async (req, res) => {
 });
 
 const updateReel = asyncHandler(async (req, res) => {
+  const existing = await Reel.findById(req.params.id);
+  if (!existing) return res.status(404).json({ success: false, message: 'Reel not found' });
   const mediaAsset = req.processedMedia?.media;
   const update = {};
   if (req.body.caption !== undefined) update.caption = typeof req.body.caption === 'string' ? req.body.caption.trim() : '';
@@ -64,13 +67,19 @@ const updateReel = asyncHandler(async (req, res) => {
     update.size = mediaAsset?.size || 0;
   }
   const reel = await Reel.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
-  if (!reel) return res.status(404).json({ success: false, message: 'Reel not found' });
+  if (uploaded) {
+    await deleteRemovedUploadFiles(
+      [existing.mediaUrl, existing.thumbnailUrl],
+      [reel.mediaUrl, reel.thumbnailUrl],
+    );
+  }
   res.json({ success: true, data: serializeReel(reel) });
 });
 
 const deleteReel = asyncHandler(async (req, res) => {
   const reel = await Reel.findByIdAndDelete(req.params.id);
   if (!reel) return res.status(404).json({ success: false, message: 'Reel not found' });
+  await deleteUploadFiles([reel.mediaUrl, reel.thumbnailUrl]);
   res.json({ success: true, message: 'Reel deleted' });
 });
 

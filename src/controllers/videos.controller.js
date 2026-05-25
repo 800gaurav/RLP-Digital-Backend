@@ -2,6 +2,7 @@ const TrainingVideo = require('../models/TrainingVideo');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { hasRenderableTrainingVideo, serializeTrainingVideo } = require('../utils/media-response');
+const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
 
 const getTrainingVideos = asyncHandler(async (req, res) => {
   const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
@@ -66,6 +67,8 @@ const createTrainingVideo = asyncHandler(async (req, res) => {
 });
 
 const updateTrainingVideo = asyncHandler(async (req, res) => {
+  const existing = await TrainingVideo.findById(req.params.id);
+  if (!existing) return res.status(404).json({ success: false, message: 'Video not found' });
   const thumbnailAsset = req.processedMedia?.thumbnail;
   const videoAsset = req.processedMedia?.video;
   const thumbnailFile = req.files?.thumbnail?.[0] || req.file;
@@ -83,13 +86,17 @@ const updateTrainingVideo = asyncHandler(async (req, res) => {
   if (videoAsset?.duration) update.duration = videoAsset.duration;
   if (videoAsset?.size) update.size = videoAsset.size;
   const video = await TrainingVideo.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
-  if (!video) return res.status(404).json({ success: false, message: 'Video not found' });
+  await deleteRemovedUploadFiles(
+    [existing.imageUrl, existing.thumbnailUrl, existing.videoUrl],
+    [video.imageUrl, video.thumbnailUrl, video.videoUrl],
+  );
   res.json({ success: true, data: serializeTrainingVideo(video) });
 });
 
 const deleteTrainingVideo = asyncHandler(async (req, res) => {
   const video = await TrainingVideo.findByIdAndDelete(req.params.id);
   if (!video) return res.status(404).json({ success: false, message: 'Video not found' });
+  await deleteUploadFiles([video.imageUrl, video.thumbnailUrl, video.videoUrl]);
   res.json({ success: true, message: 'Video deleted' });
 });
 

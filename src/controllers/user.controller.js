@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { serializeUser } = require('../utils/media-response');
+const { deleteRemovedUploadFiles } = require('../utils/upload-cleanup');
 
 const getMe = asyncHandler(async (req, res) => {
   res.json({ success: true, data: serializeUser(req.user) });
@@ -23,11 +24,17 @@ const updateMe = asyncHandler(async (req, res) => {
 const updatePhoto = asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No photo uploaded' });
   const photoAsset = req.processedMedia?.photo;
+  const existing = await User.findById(req.userId);
+  if (!existing) return res.status(404).json({ success: false, message: 'User not found' });
   const user = await User.findByIdAndUpdate(req.userId, {
     profilePhoto: photoAsset?.imageUrl || fileUrl(req, req.file),
     profileThumbnailUrl: photoAsset?.thumbnailUrl || '',
     profilePhotoSize: photoAsset?.size || 0,
   }, { new: true });
+  await deleteRemovedUploadFiles(
+    [existing.profilePhoto, existing.profileThumbnailUrl],
+    [user.profilePhoto, user.profileThumbnailUrl],
+  );
   res.json({ success: true, data: serializeUser(user) });
 });
 

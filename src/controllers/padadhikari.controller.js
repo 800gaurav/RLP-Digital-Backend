@@ -2,6 +2,7 @@ const Padadhikari = require('../models/Padadhikari');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { serializePadadhikari } = require('../utils/media-response');
+const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
 
 const listPadadhikari = asyncHandler(async (req, res) => {
   const { q, rank, district, block, state } = req.query;
@@ -46,6 +47,8 @@ const createPadadhikari = asyncHandler(async (req, res) => {
 });
 
 const updatePadadhikari = asyncHandler(async (req, res) => {
+  const existing = await Padadhikari.findById(req.params.id);
+  if (!existing) return res.status(404).json({ success: false, message: 'Official not found' });
   const photoAsset = req.processedMedia?.photo;
   const update = { ...req.body };
   const uploaded = photoAsset?.imageUrl || fileUrl(req, req.file);
@@ -53,13 +56,19 @@ const updatePadadhikari = asyncHandler(async (req, res) => {
   if (photoAsset?.thumbnailUrl) update.thumbnailUrl = photoAsset.thumbnailUrl;
   if (photoAsset?.size) update.size = photoAsset.size;
   const official = await Padadhikari.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
-  if (!official) return res.status(404).json({ success: false, message: 'Official not found' });
+  if (uploaded) {
+    await deleteRemovedUploadFiles(
+      [existing.photoUrl, existing.thumbnailUrl],
+      [official.photoUrl, official.thumbnailUrl],
+    );
+  }
   res.json({ success: true, data: serializePadadhikari(official) });
 });
 
 const deletePadadhikari = asyncHandler(async (req, res) => {
   const official = await Padadhikari.findByIdAndDelete(req.params.id);
   if (!official) return res.status(404).json({ success: false, message: 'Official not found' });
+  await deleteUploadFiles([official.photoUrl, official.thumbnailUrl]);
   res.json({ success: true, message: 'Official deleted' });
 });
 

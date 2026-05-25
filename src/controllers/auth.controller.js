@@ -4,6 +4,7 @@ const RefreshToken = require('../models/RefreshToken');
 const asyncHandler = require('../utils/asyncHandler');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 const { fileUrl } = require('../middleware/upload.middleware');
+const { serializeUser } = require('../utils/media-response');
 
 function tokenExpiry(days = 30) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -26,6 +27,7 @@ const register = asyncHandler(async (req, res) => {
 
   const password = await bcrypt.hash(body.password, 12);
   const firstUser = (await User.countDocuments()) === 0;
+  const photoAsset = req.processedMedia?.profilePhoto;
   const user = await User.create({
     fullName: body.fullName,
     email,
@@ -38,12 +40,14 @@ const register = asyncHandler(async (req, res) => {
     district: body.district,
     city: body.city,
     pincode: body.pincode,
-    profilePhoto: fileUrl(req, req.file),
+    profilePhoto: photoAsset?.imageUrl || fileUrl(req, req.file),
+    profileThumbnailUrl: photoAsset?.thumbnailUrl || '',
+    profilePhotoSize: photoAsset?.size || 0,
     role: firstUser ? 'admin' : 'user',
   });
 
   const tokens = await issueTokens(user);
-  res.status(201).json({ success: true, data: { user: user.toJSON(), tokens } });
+  res.status(201).json({ success: true, data: { user: serializeUser(user), tokens } });
 });
 
 const login = asyncHandler(async (req, res) => {
@@ -54,7 +58,7 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const tokens = await issueTokens(user);
-  res.json({ success: true, data: { user: user.toJSON(), tokens } });
+  res.json({ success: true, data: { user: serializeUser(user), tokens } });
 });
 
 const refresh = asyncHandler(async (req, res) => {

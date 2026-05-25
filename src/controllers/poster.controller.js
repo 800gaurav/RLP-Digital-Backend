@@ -4,6 +4,7 @@ const { fileUrl } = require('../middleware/upload.middleware');
 const { getSettings } = require('../utils/settings');
 const { hasRenderablePosterTemplate, serializePosterTemplate } = require('../utils/media-response');
 const { consumePosterDownload, getPosterUsage } = require('../utils/poster-access');
+const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
 
 function normalizeCategories(input) {
   const rawValues = Array.isArray(input)
@@ -47,6 +48,8 @@ const createTemplate = asyncHandler(async (req, res) => {
 });
 
 const updateTemplate = asyncHandler(async (req, res) => {
+  const existing = await PosterTemplate.findById(req.params.id);
+  if (!existing) return res.status(404).json({ success: false, message: 'Template not found' });
   const settings = await getSettings();
   const imageAsset = req.processedMedia?.image;
   const update = { ...req.body };
@@ -59,13 +62,25 @@ const updateTemplate = asyncHandler(async (req, res) => {
   if (imageAsset?.size) update.size = imageAsset.size;
   if (update.isPremium !== undefined) update.isPremium = update.isPremium === true || update.isPremium === 'true';
   const template = await PosterTemplate.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
-  if (!template) return res.status(404).json({ success: false, message: 'Template not found' });
+  if (uploaded) {
+    await deleteRemovedUploadFiles(
+      [existing.imageUrl, existing.thumbnailUrl],
+      [template.imageUrl, template.thumbnailUrl],
+    );
+  }
   res.json({ success: true, data: serializePosterTemplate(template) });
 });
 
 const deleteTemplate = asyncHandler(async (req, res) => {
-  const template = await PosterTemplate.findByIdAndUpdate(req.params.id, { active: false }, { new: true });
-  if (!template) return res.status(404).json({ success: false, message: 'Template not found' });
+  const existing = await PosterTemplate.findById(req.params.id);
+  if (!existing) return res.status(404).json({ success: false, message: 'Template not found' });
+  await PosterTemplate.findByIdAndUpdate(req.params.id, {
+    active: false,
+    imageUrl: '',
+    thumbnailUrl: '',
+    size: 0,
+  }, { new: true });
+  await deleteUploadFiles([existing.imageUrl, existing.thumbnailUrl]);
   res.json({ success: true, message: 'Template disabled' });
 });
 

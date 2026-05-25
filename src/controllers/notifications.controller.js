@@ -2,6 +2,7 @@ const Notification = require('../models/Notification');
 const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { serializeNotification } = require('../utils/media-response');
+const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
 
 const listNotifications = asyncHandler(async (_req, res) => {
   const notifications = await Notification.find().sort({ priority: -1, createdAt: -1 }).limit(100);
@@ -32,6 +33,8 @@ const createNotification = asyncHandler(async (req, res) => {
 });
 
 const updateNotification = asyncHandler(async (req, res) => {
+  const existing = await Notification.findById(req.params.id);
+  if (!existing) return res.status(404).json({ success: false, message: 'Notification not found' });
   const mediaAsset = req.processedMedia?.media;
   const update = {};
   ['title', 'body', 'message', 'mediaUrl', 'mediaType'].forEach((key) => {
@@ -41,19 +44,27 @@ const updateNotification = asyncHandler(async (req, res) => {
   const uploaded = mediaAsset?.videoUrl || mediaAsset?.imageUrl || fileUrl(req, req.file);
   if (uploaded) update.mediaUrl = uploaded;
   if (mediaAsset?.kind) update.mediaType = mediaAsset.kind;
-  if (mediaAsset?.thumbnailUrl) update.thumbnailUrl = mediaAsset.thumbnailUrl;
-  if (mediaAsset?.videoUrl) update.videoUrl = mediaAsset.videoUrl;
-  if (mediaAsset?.duration) update.duration = mediaAsset.duration;
-  if (mediaAsset?.size) update.size = mediaAsset.size;
+  if (uploaded) {
+    update.thumbnailUrl = mediaAsset?.thumbnailUrl || '';
+    update.videoUrl = mediaAsset?.videoUrl || '';
+    update.duration = mediaAsset?.duration || '';
+    update.size = mediaAsset?.size || 0;
+  }
   if (update.body && !update.message) update.message = update.body;
   const notification = await Notification.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
-  if (!notification) return res.status(404).json({ success: false, message: 'Notification not found' });
+  if (uploaded) {
+    await deleteRemovedUploadFiles(
+      [existing.mediaUrl, existing.thumbnailUrl, existing.videoUrl],
+      [notification.mediaUrl, notification.thumbnailUrl, notification.videoUrl],
+    );
+  }
   res.json({ success: true, data: serializeNotification(notification) });
 });
 
 const deleteNotification = asyncHandler(async (req, res) => {
   const notification = await Notification.findByIdAndDelete(req.params.id);
   if (!notification) return res.status(404).json({ success: false, message: 'Notification not found' });
+  await deleteUploadFiles([notification.mediaUrl, notification.thumbnailUrl, notification.videoUrl]);
   res.json({ success: true, message: 'Notification deleted' });
 });
 
