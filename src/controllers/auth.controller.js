@@ -19,18 +19,22 @@ async function issueTokens(user) {
 
 const register = asyncHandler(async (req, res) => {
   const body = req.body;
-  const email = String(body.email || '').toLowerCase().trim();
+  const email = body.email ? String(body.email).toLowerCase().trim() : '';
+  const mobileNumber = String(body.mobileNumber || '').trim();
   const voterId = String(body.voterId || '').toUpperCase().trim();
 
-  const existing = await User.findOne({ $or: [{ email }, { voterId }] });
-  if (existing) return res.status(409).json({ success: false, message: 'Email or Voter ID already registered' });
+  const duplicateChecks = [{ mobileNumber }, { voterId }];
+  if (email) duplicateChecks.push({ email });
+  const existing = await User.findOne({ $or: duplicateChecks });
+  if (existing) return res.status(409).json({ success: false, message: 'Mobile number or Voter ID already registered' });
 
   const password = await bcrypt.hash(body.password, 12);
   const firstUser = (await User.countDocuments()) === 0;
   const photoAsset = req.processedMedia?.profilePhoto;
   const user = await User.create({
     fullName: body.fullName,
-    email,
+    email: email || undefined,
+    mobileNumber,
     password,
     dob: body.dob,
     gender: body.gender,
@@ -51,10 +55,17 @@ const register = asyncHandler(async (req, res) => {
 });
 
 const login = asyncHandler(async (req, res) => {
-  const email = String(req.body.email || '').toLowerCase().trim();
-  const user = await User.findOne({ email });
+  const rawIdentifier = String(req.body.identifier || '').trim();
+  const normalizedIdentifier = rawIdentifier.toUpperCase();
+  const user = await User.findOne({
+    $or: [
+      { mobileNumber: rawIdentifier },
+      { voterId: normalizedIdentifier },
+      { email: rawIdentifier.toLowerCase() },
+    ],
+  });
   if (!user || !(await bcrypt.compare(req.body.password || '', user.password))) {
-    return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    return res.status(401).json({ success: false, message: 'Invalid mobile number, voter ID or password' });
   }
 
   const tokens = await issueTokens(user);

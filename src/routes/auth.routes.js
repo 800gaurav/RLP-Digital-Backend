@@ -9,7 +9,7 @@ const router = Router();
 
 const registerSchema = z.object({
   fullName: z.string().min(2),
-  email: z.string().email(),
+  mobileNumber: z.string().regex(/^\d{10}$/),
   password: z.string().min(8),
   dob: z.coerce.date(),
   gender: z.enum(['Male', 'Female', 'Other']),
@@ -21,7 +21,10 @@ const registerSchema = z.object({
   pincode: z.string().regex(/^\d{6}$/),
 });
 
-const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
+const loginSchema = z.object({
+  identifier: z.string().min(1),
+  password: z.string().min(1),
+});
 
 router.post(
   '/register',

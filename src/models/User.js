@@ -3,7 +3,8 @@ const baseOptions = require('./baseOptions');
 
 const userSchema = new mongoose.Schema({
   fullName: { type: String, required: true, trim: true },
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
+  mobileNumber: { type: String, required: true, unique: true, trim: true },
   password: { type: String, required: true },
   dob: { type: Date, required: true },
   gender: { type: String, required: true, enum: ['Male', 'Female', 'Other'] },
@@ -26,6 +27,6 @@ const userSchema = new mongoose.Schema({
   fcmToken: String,
 }, baseOptions);
 
-userSchema.index({ fullName: 'text', email: 'text', voterId: 'text', district: 'text', city: 'text' });
+userSchema.index({ fullName: 'text', email: 'text', mobileNumber: 'text', voterId: 'text', district: 'text', city: 'text' });
 
 module.exports = mongoose.model('User', userSchema);

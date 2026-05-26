@@ -10,7 +10,7 @@ const getMe = asyncHandler(async (req, res) => {
 });
 
 const updateMe = asyncHandler(async (req, res) => {
-  const allowed = ['fullName', 'email', 'address', 'state', 'district', 'city', 'pincode', 'gender', 'dob'];
+  const allowed = ['fullName', 'email', 'mobileNumber', 'address', 'state', 'district', 'city', 'pincode', 'gender', 'dob'];
   const update = {};
   allowed.forEach((key) => {
     if (req.body[key] !== undefined) update[key] = req.body[key];
@@ -55,6 +55,7 @@ const getUsers = asyncHandler(async (req, res) => {
     filter.$or = [
       { fullName: new RegExp(q, 'i') },
       { email: new RegExp(q, 'i') },
+      { mobileNumber: new RegExp(q, 'i') },
       { voterId: new RegExp(q, 'i') },
       { city: new RegExp(q, 'i') },
     ];
