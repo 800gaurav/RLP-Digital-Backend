@@ -39,6 +39,18 @@ const updatePhoto = asyncHandler(async (req, res) => {
   res.json({ success: true, data: serializeUser(user) });
 });
 
+const removePhoto = asyncHandler(async (req, res) => {
+  const existing = await User.findById(req.userId);
+  if (!existing) return res.status(404).json({ success: false, message: 'User not found' });
+  const user = await User.findByIdAndUpdate(req.userId, {
+    profilePhoto: '',
+    profileThumbnailUrl: '',
+    profilePhotoSize: 0,
+  }, { new: true });
+  await deleteRemovedUploadFiles([existing.profilePhoto, existing.profileThumbnailUrl], []);
+  res.json({ success: true, data: serializeUser(user) });
+});
+
 const saveFcmToken = asyncHandler(async (req, res) => {
   if (!req.body.token) return res.status(400).json({ success: false, message: 'FCM token required' });
   await User.findByIdAndUpdate(req.userId, { fcmToken: req.body.token });
@@ -89,4 +101,4 @@ const updateUserPermissions = asyncHandler(async (req, res) => {
   res.json({ success: true, data: serializeUser(user) });
 });
 
-module.exports = { getMe, updateMe, updatePhoto, saveFcmToken, savePushToken, getUsers, updateUserPermissions };
+module.exports = { getMe, updateMe, updatePhoto, removePhoto, saveFcmToken, savePushToken, getUsers, updateUserPermissions };
