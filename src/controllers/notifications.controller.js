@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { serializeNotification } = require('../utils/media-response');
 const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
+const { notifyAllUsers } = require('../utils/push-notifications');
 
 const listNotifications = asyncHandler(async (_req, res) => {
   const notifications = await Notification.find().sort({ priority: -1, createdAt: -1 }).limit(100);
@@ -30,6 +31,10 @@ const createNotification = asyncHandler(async (req, res) => {
     size: mediaAsset?.size || 0,
   });
   res.status(201).json({ success: true, data: serializeNotification(notification) });
+  notifyAllUsers('New Notification', notification.title || notification.message, {
+    type: 'notification',
+    screen: 'Notifications',
+  }).catch((error) => console.error('[push] Notification broadcast failed', error));
 });
 
 const updateNotification = asyncHandler(async (req, res) => {

@@ -25,6 +25,7 @@ const userSchema = new mongoose.Schema({
   subscriptionStartDate: Date,
   subscriptionEndDate: Date,
   fcmToken: String,
+  pushToken: { type: String, trim: true, index: true },
 }, baseOptions);
 
 userSchema.index({ fullName: 'text', email: 'text', mobileNumber: 'text', voterId: 'text', district: 'text', city: 'text' });

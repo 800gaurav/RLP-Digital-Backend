@@ -4,6 +4,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { serializeUser } = require('../utils/media-response');
 const { deleteRemovedUploadFiles } = require('../utils/upload-cleanup');
+const { isValidExpoPushToken } = require('../utils/push-notifications');
 
 const getMe = asyncHandler(async (req, res) => {
   res.json({ success: true, data: serializeUser(req.user) });
@@ -44,6 +45,18 @@ const saveFcmToken = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'FCM token saved' });
 });
 
+const savePushToken = asyncHandler(async (req, res) => {
+  const pushToken = String(req.body.pushToken || req.body.token || '').trim();
+  if (!pushToken) return res.status(400).json({ success: false, message: 'Expo push token required' });
+  if (!isValidExpoPushToken(pushToken)) {
+    return res.status(400).json({ success: false, message: 'Invalid Expo push token' });
+  }
+
+  await User.findByIdAndUpdate(req.userId, { pushToken, fcmToken: pushToken });
+  console.log('[push] Token saved for user', { userId: req.userId, tokenTail: pushToken.slice(-10) });
+  res.json({ success: true, message: 'Push token saved' });
+});
+
 const getUsers = asyncHandler(async (req, res) => {
   const { q, role, subscriptionStatus, stampPadAccess, district } = req.query;
   const filter = {};
@@ -76,4 +89,4 @@ const updateUserPermissions = asyncHandler(async (req, res) => {
   res.json({ success: true, data: serializeUser(user) });
 });
 
-module.exports = { getMe, updateMe, updatePhoto, saveFcmToken, getUsers, updateUserPermissions };
+module.exports = { getMe, updateMe, updatePhoto, saveFcmToken, savePushToken, getUsers, updateUserPermissions };

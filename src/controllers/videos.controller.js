@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { hasRenderableTrainingVideo, serializeTrainingVideo } = require('../utils/media-response');
 const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
+const { notifyAllUsers } = require('../utils/push-notifications');
 
 const getTrainingVideos = asyncHandler(async (req, res) => {
   const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
@@ -64,6 +65,10 @@ const createTrainingVideo = asyncHandler(async (req, res) => {
     size: videoAsset?.size || 0,
   });
   res.status(201).json({ success: true, data: serializeTrainingVideo(video) });
+  notifyAllUsers('New Training Video', video.title || 'New training video available hai.', {
+    type: 'training_video',
+    screen: 'TrainingVideos',
+  }).catch((error) => console.error('[push] Training video broadcast failed', error));
 });
 
 const updateTrainingVideo = asyncHandler(async (req, res) => {

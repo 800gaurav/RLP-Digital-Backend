@@ -29,7 +29,6 @@ const register = asyncHandler(async (req, res) => {
   if (existing) return res.status(409).json({ success: false, message: 'Mobile number or Voter ID already registered' });
 
   const password = await bcrypt.hash(body.password, 12);
-  const firstUser = (await User.countDocuments()) === 0;
   const photoAsset = req.processedMedia?.profilePhoto;
   const user = await User.create({
     fullName: body.fullName,
@@ -47,7 +46,7 @@ const register = asyncHandler(async (req, res) => {
     profilePhoto: photoAsset?.imageUrl || fileUrl(req, req.file),
     profileThumbnailUrl: photoAsset?.thumbnailUrl || '',
     profilePhotoSize: photoAsset?.size || 0,
-    role: firstUser ? 'admin' : 'user',
+    role: 'user',
   });
 
   const tokens = await issueTokens(user);

@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { hasRenderableReel, serializeReel } = require('../utils/media-response');
 const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
+const { notifyAllUsers } = require('../utils/push-notifications');
 
 const getReels = asyncHandler(async (req, res) => {
   const hasPaginationQuery = req.query.page !== undefined || req.query.limit !== undefined;
@@ -49,6 +50,10 @@ const createReel = asyncHandler(async (req, res) => {
     caption,
   });
   res.status(201).json({ success: true, data: serializeReel(reel) });
+  notifyAllUsers('New Status Update', reel.caption || 'Naya status update available hai.', {
+    type: 'status',
+    screen: 'Status',
+  }).catch((error) => console.error('[push] Status broadcast failed', error));
 });
 
 const updateReel = asyncHandler(async (req, res) => {

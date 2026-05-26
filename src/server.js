@@ -2,6 +2,7 @@ require('dotenv').config();
 const app = require('./app');
 const { connectDb } = require('./utils/db');
 const { ensureDefaultSettings } = require('./utils/settings');
+const { ensureDefaultAdmin } = require('./utils/admin-bootstrap');
 const { validateEnv } = require('./config/env');
 
 const env = validateEnv();
@@ -12,6 +13,7 @@ dns.setDefaultResultOrder('ipv4first');
 
 async function start() {
   await connectDb();
+  await ensureDefaultAdmin();
   await ensureDefaultSettings();
   const host = process.env.HOST || '0.0.0.0';
   app.listen(env.port, host, () => {

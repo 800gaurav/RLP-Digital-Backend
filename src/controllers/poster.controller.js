@@ -5,6 +5,7 @@ const { getSettings } = require('../utils/settings');
 const { hasRenderablePosterTemplate, serializePosterTemplate } = require('../utils/media-response');
 const { consumePosterDownload, getPosterUsage } = require('../utils/poster-access');
 const { deleteRemovedUploadFiles, deleteUploadFiles } = require('../utils/upload-cleanup');
+const { notifyAllUsers } = require('../utils/push-notifications');
 
 function normalizeCategories(input) {
   const rawValues = Array.isArray(input)
@@ -45,6 +46,10 @@ const createTemplate = asyncHandler(async (req, res) => {
     metadata: req.body.metadata || {},
   });
   res.status(201).json({ success: true, data: serializePosterTemplate(template) });
+  notifyAllUsers('New Poster Template', template.name || 'New poster template available hai.', {
+    type: 'poster_template',
+    screen: 'PosterTemplates',
+  }).catch((error) => console.error('[push] Poster template broadcast failed', error));
 });
 
 const updateTemplate = asyncHandler(async (req, res) => {
