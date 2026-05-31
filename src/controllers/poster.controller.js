@@ -106,6 +106,18 @@ const getSubscriptionStatus = asyncHandler(async (req, res) => {
   });
 });
 
+const getSubscriptionPlan = asyncHandler(async (_req, res) => {
+  const settings = await getSettings();
+  res.json({
+    success: true,
+    data: {
+      price: settings.subscriptionPrice,
+      monthlyDownloadLimit: settings.monthlyTemplateDownloadLimit,
+      categories: settings.posterCategories,
+    },
+  });
+});
+
 const updateSubscriptionSettings = asyncHandler(async (req, res) => {
   const settings = await getSettings();
   if (req.body.price !== undefined) settings.subscriptionPrice = Number(req.body.price);
@@ -148,6 +160,7 @@ module.exports = {
   updateTemplate,
   deleteTemplate,
   getSubscriptionStatus,
+  getSubscriptionPlan,
   updateSubscriptionSettings,
   consumeTemplateDownload,
 };

@@ -8,11 +8,13 @@ const DEFAULT_ADMIN = {
   mobileNumber: '9999999999',
   dob: new Date('1990-01-01T00:00:00.000Z'),
   gender: 'Male',
+  category: 'General',
   voterId: 'RLPADMIN01',
   address: 'RLP State Office, Jaipur',
   state: 'Rajasthan',
   district: 'Jaipur',
   city: 'Jaipur',
+  vidhansabha: 'Jaipur',
   pincode: '302001',
   role: 'admin',
 };
@@ -35,11 +37,13 @@ async function ensureDefaultAdmin() {
   existingAdmin.mobileNumber = existingAdmin.mobileNumber || DEFAULT_ADMIN.mobileNumber;
   existingAdmin.dob = existingAdmin.dob || DEFAULT_ADMIN.dob;
   existingAdmin.gender = existingAdmin.gender || DEFAULT_ADMIN.gender;
+  existingAdmin.category = existingAdmin.category || DEFAULT_ADMIN.category;
   existingAdmin.voterId = existingAdmin.voterId || DEFAULT_ADMIN.voterId;
   existingAdmin.address = existingAdmin.address || DEFAULT_ADMIN.address;
   existingAdmin.state = existingAdmin.state || DEFAULT_ADMIN.state;
   existingAdmin.district = existingAdmin.district || DEFAULT_ADMIN.district;
   existingAdmin.city = existingAdmin.city || DEFAULT_ADMIN.city;
+  existingAdmin.vidhansabha = existingAdmin.vidhansabha || DEFAULT_ADMIN.vidhansabha;
   existingAdmin.pincode = existingAdmin.pincode || DEFAULT_ADMIN.pincode;
   existingAdmin.role = 'admin';
   existingAdmin.password = hashedPassword;

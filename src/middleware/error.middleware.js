@@ -17,7 +17,17 @@ function errorHandler(err, _req, res, _next) {
     message = 'Invalid authentication token';
   } else if (err.code === 11000) {
     status = 409;
-    message = 'Duplicate record already exists';
+    if (err.keyPattern?.email && (err.keyValue?.email === null || err.keyValue?.email === undefined)) {
+      message = 'Email index configuration issue. Please retry after backend restart.';
+    } else if (err.keyPattern?.email) {
+      message = 'Email already registered';
+    } else if (err.keyPattern?.mobileNumber) {
+      message = 'Mobile number already registered';
+    } else if (err.keyPattern?.voterId) {
+      message = 'Voter ID already registered';
+    } else {
+      message = 'Duplicate record already exists';
+    }
   } else if (err.name === 'MulterError') {
     status = 400;
   } else if (typeof err.message === 'string' && err.message.startsWith('Unsupported file type')) {

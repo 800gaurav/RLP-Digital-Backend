@@ -8,9 +8,10 @@ const asyncHandler = require('../utils/asyncHandler');
 const { getUsers } = require('./user.controller');
 
 const overview = asyncHandler(async (_req, res) => {
-  const [users, activeSubscriptions, totalPadadhikari, recentRegistrations, reels, trainingVideos, notifications] = await Promise.all([
+  const [users, activeSubscriptions, pendingPayments, totalPadadhikari, recentRegistrations, reels, trainingVideos, notifications] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ subscriptionStatus: 'active' }),
+    User.countDocuments({ paymentStatus: 'under_review' }),
     Padadhikari.countDocuments(),
     User.find().sort({ createdAt: -1 }).limit(5),
     Reel.countDocuments(),
@@ -24,6 +25,8 @@ const overview = asyncHandler(async (_req, res) => {
       users,
       totalUsers: users,
       activeSubscriptions,
+      pendingPayments,
+      paymentRequests: pendingPayments,
       totalPadadhikari,
       pendingApprovals: 0,
       recentRegistrations: recentRegistrations.map((user) => user.toJSON()),

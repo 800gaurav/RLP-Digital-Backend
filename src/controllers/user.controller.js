@@ -11,12 +11,37 @@ const getMe = asyncHandler(async (req, res) => {
 });
 
 const updateMe = asyncHandler(async (req, res) => {
-  const allowed = ['fullName', 'email', 'mobileNumber', 'address', 'state', 'district', 'city', 'pincode', 'gender', 'dob'];
+  const allowed = ['fullName', 'email', 'mobileNumber', 'voterId', 'state', 'district', 'vidhansabha', 'gender', 'dob', 'category'];
   const update = {};
   allowed.forEach((key) => {
     if (req.body[key] !== undefined) update[key] = req.body[key];
   });
   if (req.body.password) update.password = await bcrypt.hash(req.body.password, 12);
+
+  if (update.mobileNumber) {
+    const existingMobile = await User.findOne({ mobileNumber: update.mobileNumber, _id: { $ne: req.userId } });
+    if (existingMobile) {
+      return res.status(409).json({ success: false, message: 'Mobile number already registered' });
+    }
+  }
+
+  if (update.voterId) {
+    const normalizedVoterId = String(update.voterId).trim().toUpperCase();
+    const existingVoterId = await User.findOne({ voterId: normalizedVoterId, _id: { $ne: req.userId } });
+    if (existingVoterId) {
+      return res.status(409).json({ success: false, message: 'Voter ID already registered' });
+    }
+    update.voterId = normalizedVoterId;
+  }
+
+  if (update.email) {
+    const normalizedEmail = String(update.email).toLowerCase().trim();
+    const existingEmail = await User.findOne({ email: normalizedEmail, _id: { $ne: req.userId } });
+    if (existingEmail) {
+      return res.status(409).json({ success: false, message: 'Email already registered' });
+    }
+    update.email = normalizedEmail;
+  }
 
   const user = await User.findByIdAndUpdate(req.userId, update, { new: true, runValidators: true });
   res.json({ success: true, data: serializeUser(user) });
@@ -35,6 +60,23 @@ const updatePhoto = asyncHandler(async (req, res) => {
   await deleteRemovedUploadFiles(
     [existing.profilePhoto, existing.profileThumbnailUrl],
     [user.profilePhoto, user.profileThumbnailUrl],
+  );
+  res.json({ success: true, data: serializeUser(user) });
+});
+
+const updateVoterIdPhoto = asyncHandler(async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: 'No voter ID photo uploaded' });
+  const photoAsset = req.processedMedia?.voterIdPhoto || req.processedMedia?.[req.file.filename];
+  const existing = await User.findById(req.userId);
+  if (!existing) return res.status(404).json({ success: false, message: 'User not found' });
+  const user = await User.findByIdAndUpdate(req.userId, {
+    voterIdPhoto: photoAsset?.imageUrl || fileUrl(req, req.file),
+    voterIdThumbnailUrl: photoAsset?.thumbnailUrl || '',
+    voterIdPhotoSize: photoAsset?.size || 0,
+  }, { new: true });
+  await deleteRemovedUploadFiles(
+    [existing.voterIdPhoto, existing.voterIdThumbnailUrl],
+    [user.voterIdPhoto, user.voterIdThumbnailUrl],
   );
   res.json({ success: true, data: serializeUser(user) });
 });
@@ -70,18 +112,33 @@ const savePushToken = asyncHandler(async (req, res) => {
 });
 
 const getUsers = asyncHandler(async (req, res) => {
-  const { q, role, subscriptionStatus, stampPadAccess, district } = req.query;
+  const {
+    q,
+    role,
+    subscriptionStatus,
+    stampPadAccess,
+    district,
+    vidhansabha,
+    category,
+    paymentStatus,
+  } = req.query;
   const filter = {};
   if (role) filter.role = role;
   if (subscriptionStatus) filter.subscriptionStatus = subscriptionStatus;
   if (stampPadAccess !== undefined) filter.stampPadAccess = stampPadAccess === 'true';
   if (district) filter.district = new RegExp(district, 'i');
+  if (vidhansabha) filter.vidhansabha = new RegExp(vidhansabha, 'i');
+  if (category) filter.category = new RegExp(category, 'i');
+  if (paymentStatus) filter.paymentStatus = paymentStatus;
   if (q) {
     filter.$or = [
       { fullName: new RegExp(q, 'i') },
       { email: new RegExp(q, 'i') },
       { mobileNumber: new RegExp(q, 'i') },
       { voterId: new RegExp(q, 'i') },
+      { district: new RegExp(q, 'i') },
+      { vidhansabha: new RegExp(q, 'i') },
+      { category: new RegExp(q, 'i') },
       { city: new RegExp(q, 'i') },
     ];
   }
@@ -101,4 +158,26 @@ const updateUserPermissions = asyncHandler(async (req, res) => {
   res.json({ success: true, data: serializeUser(user) });
 });
 
-module.exports = { getMe, updateMe, updatePhoto, removePhoto, saveFcmToken, savePushToken, getUsers, updateUserPermissions };
+const updatePaymentStatus = asyncHandler(async (req, res) => {
+  const status = String(req.body.paymentStatus || '').trim();
+  if (!['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ success: false, message: 'Valid payment status is required' });
+  }
+
+  const update = {
+    paymentStatus: status,
+    paymentReviewedAt: new Date(),
+    paymentReviewedBy: req.userId,
+    subscriptionStatus: status === 'approved' ? 'active' : 'inactive',
+  };
+  if (status === 'approved') {
+    update.subscriptionStartDate = new Date();
+    update.subscriptionEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  }
+
+  const user = await User.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+  if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+  res.json({ success: true, data: serializeUser(user) });
+});
+
+module.exports = { getMe, updateMe, updatePhoto, updateVoterIdPhoto, removePhoto, saveFcmToken, savePushToken, getUsers, updateUserPermissions, updatePaymentStatus };

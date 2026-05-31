@@ -3,10 +3,11 @@ const { requireAuth } = require('../middleware/auth.middleware');
 const { requireAdmin } = require('../middleware/admin.middleware');
 const { uploadRoot, uploadTemplate } = require('../middleware/upload.middleware');
 const { optimizeUploads } = require('../middleware/optimize-upload.middleware');
-const { getTemplates, createTemplate, updateTemplate, deleteTemplate, getSubscriptionStatus, updateSubscriptionSettings, consumeTemplateDownload } = require('../controllers/poster.controller');
+const { getTemplates, createTemplate, updateTemplate, deleteTemplate, getSubscriptionStatus, getSubscriptionPlan, updateSubscriptionSettings, consumeTemplateDownload } = require('../controllers/poster.controller');
 
 const router = Router();
 
+router.get('/subscription-plan', getSubscriptionPlan);
 router.get('/templates', requireAuth, getTemplates);
 router.post(
   '/templates',

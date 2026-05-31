@@ -105,9 +105,12 @@ function serializeUser(item) {
   const data = item.toJSON ? item.toJSON() : item;
   return {
     ...data,
-    profilePhoto: data.profilePhoto || '',
-    profileThumbnailUrl: data.profileThumbnailUrl || data.profilePhoto || '',
+    profilePhoto: sanitizeUploadUrl(data.profilePhoto || ''),
+    profileThumbnailUrl: sanitizeUploadUrl(data.profileThumbnailUrl || data.profilePhoto || ''),
     profilePhotoSize: toSizeValue(data.profilePhotoSize),
+    voterIdPhoto: sanitizeUploadUrl(data.voterIdPhoto || ''),
+    voterIdThumbnailUrl: sanitizeUploadUrl(data.voterIdThumbnailUrl || data.voterIdPhoto || ''),
+    voterIdPhotoSize: toSizeValue(data.voterIdPhotoSize),
   };
 }
 

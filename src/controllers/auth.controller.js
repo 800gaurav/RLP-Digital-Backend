@@ -5,6 +5,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 const { fileUrl } = require('../middleware/upload.middleware');
 const { serializeUser } = require('../utils/media-response');
+const { getSettings } = require('../utils/settings');
 
 function tokenExpiry(days = 30) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -17,6 +18,12 @@ async function issueTokens(user) {
   return { accessToken, refreshToken };
 }
 
+function getUploadedFile(req, fieldName) {
+  const fileList = req.files?.[fieldName];
+  if (Array.isArray(fileList) && fileList[0]) return fileList[0];
+  return req.file;
+}
+
 const register = asyncHandler(async (req, res) => {
   const body = req.body;
   const email = body.email ? String(body.email).toLowerCase().trim() : '';
@@ -26,10 +33,23 @@ const register = asyncHandler(async (req, res) => {
   const duplicateChecks = [{ mobileNumber }, { voterId }];
   if (email) duplicateChecks.push({ email });
   const existing = await User.findOne({ $or: duplicateChecks });
-  if (existing) return res.status(409).json({ success: false, message: 'Mobile number or Voter ID already registered' });
+  if (existing) {
+    const message = existing.mobileNumber === mobileNumber
+      ? 'Mobile number already registered'
+      : (existing.voterId === voterId ? 'Voter ID already registered' : 'Email already registered');
+    return res.status(409).json({ success: false, message });
+  }
 
   const password = await bcrypt.hash(body.password, 12);
+  const paymentUtr = String(body.paymentUtr || '').trim();
+  if (!/^\d{12}$/.test(paymentUtr)) {
+    return res.status(400).json({ success: false, message: 'Valid 12 digit UTR number is required' });
+  }
+  const settings = await getSettings();
   const photoAsset = req.processedMedia?.profilePhoto;
+  const voterIdAsset = req.processedMedia?.voterIdPhoto;
+  const profilePhotoFile = getUploadedFile(req, 'profilePhoto');
+  const voterIdPhotoFile = getUploadedFile(req, 'voterIdPhoto');
   const user = await User.create({
     fullName: body.fullName,
     email: email || undefined,
@@ -37,20 +57,45 @@ const register = asyncHandler(async (req, res) => {
     password,
     dob: body.dob,
     gender: body.gender,
+    category: body.category,
     voterId,
-    address: body.address,
     state: body.state,
     district: body.district,
-    city: body.city,
+    vidhansabha: body.vidhansabha,
     pincode: body.pincode,
-    profilePhoto: photoAsset?.imageUrl || fileUrl(req, req.file),
+    profilePhoto: photoAsset?.imageUrl || fileUrl(req, profilePhotoFile),
     profileThumbnailUrl: photoAsset?.thumbnailUrl || '',
     profilePhotoSize: photoAsset?.size || 0,
+    voterIdPhoto: voterIdAsset?.imageUrl || fileUrl(req, voterIdPhotoFile),
+    voterIdThumbnailUrl: voterIdAsset?.thumbnailUrl || '',
+    voterIdPhotoSize: voterIdAsset?.size || 0,
     role: 'user',
+    subscriptionStatus: 'inactive',
+    paymentStatus: 'under_review',
+    paymentUtr,
+    paymentAmount: settings.subscriptionPrice,
   });
 
-  const tokens = await issueTokens(user);
-  res.status(201).json({ success: true, data: { user: serializeUser(user), tokens } });
+  res.status(201).json({ success: true, data: { user: serializeUser(user) } });
+});
+
+const validateRegistration = asyncHandler(async (req, res) => {
+  const body = req.body;
+  const email = body.email ? String(body.email).toLowerCase().trim() : '';
+  const mobileNumber = String(body.mobileNumber || '').trim();
+  const voterId = String(body.voterId || '').toUpperCase().trim();
+
+  const duplicateChecks = [{ mobileNumber }, { voterId }];
+  if (email) duplicateChecks.push({ email });
+  const existing = await User.findOne({ $or: duplicateChecks });
+  if (existing) {
+    const message = existing.mobileNumber === mobileNumber
+      ? 'Mobile number already registered'
+      : (existing.voterId === voterId ? 'Voter ID already registered' : 'Email already registered');
+    return res.status(409).json({ success: false, message });
+  }
+
+  res.json({ success: true, data: { valid: true } });
 });
 
 const login = asyncHandler(async (req, res) => {
@@ -65,6 +110,17 @@ const login = asyncHandler(async (req, res) => {
   });
   if (!user || !(await bcrypt.compare(req.body.password || '', user.password))) {
     return res.status(401).json({ success: false, message: 'Invalid mobile number, voter ID or password' });
+  }
+  const paymentStatus = user.paymentStatus || 'approved';
+  if (user.role !== 'admin' && paymentStatus !== 'approved') {
+    const rejected = paymentStatus === 'rejected';
+    return res.status(403).json({
+      success: false,
+      code: rejected ? 'PAYMENT_REJECTED' : 'PAYMENT_UNDER_REVIEW',
+      message: rejected
+        ? 'Payment rejected by admin. Please contact support.'
+        : 'Payment under review. Admin approval ke baad login hoga.',
+    });
   }
 
   const tokens = await issueTokens(user);
@@ -113,4 +169,4 @@ const resetPassword = (_req, res) => {
   res.json({ success: true, message: 'Password reset flow is not enabled yet' });
 };
 
-module.exports = { register, login, refresh, logout, forgotPassword, verifyOtp, resetPassword };
+module.exports = { register, validateRegistration, login, refresh, logout, forgotPassword, verifyOtp, resetPassword };
