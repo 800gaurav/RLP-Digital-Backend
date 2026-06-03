@@ -121,6 +121,7 @@ const getUsers = asyncHandler(async (req, res) => {
     vidhansabha,
     category,
     paymentStatus,
+    accountStatus,
   } = req.query;
   const filter = {};
   if (role) filter.role = role;
@@ -130,6 +131,7 @@ const getUsers = asyncHandler(async (req, res) => {
   if (vidhansabha) filter.vidhansabha = new RegExp(vidhansabha, 'i');
   if (category) filter.category = new RegExp(category, 'i');
   if (paymentStatus) filter.paymentStatus = paymentStatus;
+  if (accountStatus) filter.accountStatus = accountStatus;
   if (q) {
     filter.$or = [
       { fullName: new RegExp(q, 'i') },
@@ -151,6 +153,7 @@ const updateUserPermissions = asyncHandler(async (req, res) => {
   const update = {};
   if (req.body.stampPadAccess !== undefined) update.stampPadAccess = !!req.body.stampPadAccess;
   if (req.body.subscriptionStatus) update.subscriptionStatus = req.body.subscriptionStatus;
+  if (req.body.accountStatus && ['active', 'suspended'].includes(req.body.accountStatus)) update.accountStatus = req.body.accountStatus;
   if (req.body.role && ['user', 'admin'].includes(req.body.role)) update.role = req.body.role;
 
   const user = await User.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });

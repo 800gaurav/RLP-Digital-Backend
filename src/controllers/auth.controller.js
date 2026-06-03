@@ -41,10 +41,6 @@ const register = asyncHandler(async (req, res) => {
   }
 
   const password = await bcrypt.hash(body.password, 12);
-  const paymentUtr = String(body.paymentUtr || '').trim();
-  if (!/^\d{12}$/.test(paymentUtr)) {
-    return res.status(400).json({ success: false, message: 'Valid 12 digit UTR number is required' });
-  }
   const settings = await getSettings();
   const photoAsset = req.processedMedia?.profilePhoto;
   const voterIdAsset = req.processedMedia?.voterIdPhoto;
@@ -70,9 +66,9 @@ const register = asyncHandler(async (req, res) => {
     voterIdThumbnailUrl: voterIdAsset?.thumbnailUrl || '',
     voterIdPhotoSize: voterIdAsset?.size || 0,
     role: 'user',
+    accountStatus: 'active',
     subscriptionStatus: 'inactive',
     paymentStatus: 'under_review',
-    paymentUtr,
     paymentAmount: settings.subscriptionPrice,
   });
 
@@ -110,6 +106,13 @@ const login = asyncHandler(async (req, res) => {
   });
   if (!user || !(await bcrypt.compare(req.body.password || '', user.password))) {
     return res.status(401).json({ success: false, message: 'Invalid mobile number, voter ID or password' });
+  }
+  if (user.role !== 'admin' && user.accountStatus === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      code: 'ACCOUNT_SUSPENDED',
+      message: 'Account suspended by admin. Please contact support.',
+    });
   }
   const paymentStatus = user.paymentStatus || 'approved';
   if (user.role !== 'admin' && paymentStatus !== 'approved') {

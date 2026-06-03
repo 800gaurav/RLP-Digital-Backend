@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema({
   voterIdThumbnailUrl: { type: String, default: '' },
   voterIdPhotoSize: { type: Number, default: 0 },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  accountStatus: { type: String, enum: ['active', 'suspended'], default: 'active', index: true },
   stampPadAccess: { type: Boolean, default: false },
   subscriptionStatus: { type: String, enum: ['inactive', 'active'], default: 'inactive' },
   paymentStatus: { type: String, enum: ['approved', 'under_review', 'rejected'], default: 'approved', index: true },

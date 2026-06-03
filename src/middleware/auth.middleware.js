@@ -19,6 +19,13 @@ const requireAuth = asyncHandler(async (req, res, next) => {
 
   const user = await User.findById(payload.userId);
   if (!user) return res.status(401).json({ success: false, message: 'User not found' });
+  if (user.role !== 'admin' && user.accountStatus === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      code: 'ACCOUNT_SUSPENDED',
+      message: 'Account suspended by admin. Please contact support.',
+    });
+  }
 
   req.user = user;
   req.userId = user.id;

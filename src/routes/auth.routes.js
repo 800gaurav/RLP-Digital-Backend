@@ -21,9 +21,7 @@ const registrationDetailsSchema = z.object({
   pincode: z.string().regex(/^\d{6}$/).optional().or(z.literal('')),
 });
 
-const registerSchema = registrationDetailsSchema.extend({
-  paymentUtr: z.string().regex(/^\d{12}$/),
-});
+const registerSchema = registrationDetailsSchema;
 
 const loginSchema = z.object({
   identifier: z.string().min(1),
