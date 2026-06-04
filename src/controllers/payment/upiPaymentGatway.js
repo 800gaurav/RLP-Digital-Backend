@@ -3,7 +3,8 @@ const User = require('../../models/User');
 const asyncHandler = require('../../utils/asyncHandler');
 const { serializeUser } = require('../../utils/media-response');
 
-const DEFAULT_ORDER_URL = 'https://api.upigateway.com/v1/order/create';
+const DEFAULT_ORDER_URL = 'https://api.ekqr.in/api/create_order';
+const DEFAULT_STATUS_URL = 'https://api.ekqr.in/api/check_order_status';
 const SUCCESS_STATUSES = new Set(['success', 'successful', 'paid', 'completed']);
 const FAILED_STATUSES = new Set(['failure', 'failed', 'cancelled', 'canceled', 'expired']);
 
@@ -21,6 +22,7 @@ function isGatewayAccepted(data) {
 function getGatewayConfig() {
   const apiKey = process.env.UPI_GATEWAY_API_KEY || process.env.UPIGATEWAY_API_KEY;
   const orderUrl = process.env.UPI_GATEWAY_ORDER_URL || DEFAULT_ORDER_URL;
+  const statusUrl = process.env.UPI_GATEWAY_STATUS_URL || DEFAULT_STATUS_URL;
   const publicBaseUrl = String(process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, '');
   const callbackUrl = process.env.UPI_GATEWAY_CALLBACK_URL
     || (publicBaseUrl ? `${publicBaseUrl}/api/payments/upi/callback` : '');
@@ -28,7 +30,7 @@ function getGatewayConfig() {
     || process.env.FRONTEND_PAYMENT_SUCCESS_URL
     || callbackUrl;
 
-  return { apiKey, orderUrl, callbackUrl, redirectUrl };
+  return { apiKey, orderUrl, statusUrl, callbackUrl, redirectUrl };
 }
 
 function buildClientTxnId(user) {
@@ -173,6 +175,23 @@ const getRegistrationPaymentStatus = asyncHandler(async (req, res) => {
 
   const user = await User.findOne(filter);
   if (!user) return res.status(404).json({ success: false, message: 'Payment user not found' });
+
+  // If pending, verify with gateway
+  if (user.paymentStatus === 'under_review' && user.paymentClientTxnId) {
+    try {
+      const { apiKey, statusUrl } = getGatewayConfig();
+      const txnDate = user.createdAt ? new Date(user.createdAt).toISOString().slice(0, 10).split('-').reverse().join('-') : '';
+      const gatewayRes = await axios.post(statusUrl, {
+        key: apiKey,
+        client_txn_id: user.paymentClientTxnId,
+        txn_date: txnDate,
+      }, { timeout: 15000, headers: { 'Content-Type': 'application/json' } });
+      const gData = gatewayRes.data;
+      const status = normalizeStatus(gData?.status === true ? 'success' : gData?.data?.status || gData?.status);
+      if (SUCCESS_STATUSES.has(status)) await markPaymentSuccess(user, gData?.data || gData);
+      else if (FAILED_STATUSES.has(status)) await markPaymentFailed(user, gData?.data || gData);
+    } catch (_) { /* gateway check failed, return DB status */ }
+  }
 
   res.json({
     success: true,
