@@ -16,6 +16,7 @@ const trainingRoutes = require('./routes/videos.routes');
 const stampPadRoutes = require('./routes/stamppad.routes');
 const idCardRoutes = require('./routes/idcard.routes');
 const homeRoutes = require('./routes/home.routes');
+const paymentRoutes = require('./routes/payment.routes');
 const { notFound, errorHandler } = require('./middleware/error.middleware');
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/stamp-pad', stampPadRoutes);
 app.use('/api/id-card', idCardRoutes);
 app.use('/api/verify', idCardRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/payments', paymentRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

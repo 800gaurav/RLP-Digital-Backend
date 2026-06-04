@@ -121,8 +121,8 @@ const login = asyncHandler(async (req, res) => {
       success: false,
       code: rejected ? 'PAYMENT_REJECTED' : 'PAYMENT_UNDER_REVIEW',
       message: rejected
-        ? 'Payment rejected by admin. Please contact support.'
-        : 'Payment under review. Admin approval ke baad login hoga.',
+        ? 'Payment failed. Please complete registration payment again or contact support.'
+        : 'Payment pending hai. Payment success ke baad login hoga.',
     });
   }
 
